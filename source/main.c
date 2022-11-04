@@ -6,9 +6,6 @@
 #include <nf_lib.h>
 
 #define BOARD_SIZE 4
-#if BOARD_SIZE < 4
-#error BOARD_SIZE should be >=4 for proper gameplay
-#endif
 #define uint8_t u8
 #define uint16_t u16
 #define uint32_t u32
@@ -19,6 +16,9 @@
 		*score += board[a][b];      \
 		success = true;             \
 	}
+#define tap() (keysDown() & KEY_TOUCH)
+#define release() (keysUp() & KEY_TOUCH)
+#define hold() (keysHeld() & KEY_TOUCH)
 
 typedef enum move_dir
 {
@@ -151,6 +151,44 @@ bool move(u8 board[BOARD_SIZE][BOARD_SIZE], move_dir_t *player_move, u32 *score)
 	return success;
 }
 
+bool game_over(u8 board[BOARD_SIZE][BOARD_SIZE])
+{
+	for (u8 i = 0; i < BOARD_SIZE; i++)
+	{
+		for (u8 j = 0; j < BOARD_SIZE; j++)
+		{
+			if (i - 1 >= 0 && (board[i - 1][j] == board[i][j] || board[i - 1][j] == 0))
+				return false;
+			if (j - 1 >= 0 && (board[i][j - 1] == board[i][j] || board[i][j - 1] == 0))
+				return false;
+			if (
+				i + 1 < BOARD_SIZE &&
+				(board[i + 1][j] == board[i][j] || board[i + 1][j] == 0))
+				return false;
+			if (
+				j + 1 < BOARD_SIZE &&
+				(board[i][j + 1] == board[i][j] || board[i][j + 1] == 0))
+				return false;
+		}
+	}
+	return true;
+}
+
+bool win(u8 board[BOARD_SIZE][BOARD_SIZE])
+{
+	for (u8 i = 0; i < BOARD_SIZE; i++)
+	{
+		for (u8 j = 0; j < BOARD_SIZE; j++)
+		{
+			if (board[i][j] >= 2048)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 void place_rand(u8 board[BOARD_SIZE][BOARD_SIZE])
 {
 	u8 empty_tiles[BOARD_SIZE * BOARD_SIZE][2], empty_tiles_count = 0;
@@ -172,7 +210,7 @@ void place_rand(u8 board[BOARD_SIZE][BOARD_SIZE])
 		return;
 
 	u8 tile_idx = rand() % empty_tiles_count;
-	u8 tile_num = 2;
+	u8 tile_num = ((rand() % 100) < 80) ? 2 : 4;
 	board[empty_tiles[tile_idx][0]][empty_tiles[tile_idx][1]] = tile_num;
 }
 
@@ -189,22 +227,80 @@ void init_board(u8 board[BOARD_SIZE][BOARD_SIZE])
 	place_rand(board);
 }
 
-int main(int argc, char **argv)
+void setup()
+{
+	srand(time(NULL));
+	consoleDemoInit();
+	NF_SetRootFolder("NITROFS");
+
+	soundEnable();
+	NF_InitRawSoundBuffers();
+
+	NF_Set2D(0, 0);
+	NF_Set2D(1, 0);
+
+	NF_InitTiledBgBuffers();
+	NF_InitSpriteBuffers();
+	NF_InitTiledBgSys(0);
+	NF_InitTiledBgSys(1);
+	NF_InitSpriteSys(0);
+	NF_InitSpriteSys(1);
+	NF_InitTextSys(0);
+	NF_InitTextSys(1);
+
+	NF_LoadTiledBg("bg/bottom", "bottom", 256, 256);
+	NF_CreateTiledBg(1, 0, "bottom");
+
+	NF_LoadSpriteGfx("sprite/touch_icon", 0, 16, 16);
+	NF_LoadSpritePal("sprite/touch_icon", 0);
+	NF_VramSpriteGfx(1, 0, 0, false);
+	NF_VramSpritePal(1, 0, 0);
+}
+
+void handle_touch_sprite(u32 *frame, touchPosition *touch)
+{
+	static u8 touch_frame = 0;
+
+	if (tap())
+	{
+		if (touch_frame > 0)
+		{
+			NF_DeleteSprite(1, 0);
+			touch_frame = 0;
+		}
+		NF_CreateSprite(1, 0, 0, 0, touch->px - 8, touch->py - 8);
+		touch_frame++;
+	}
+	else if (touch_frame > 0 && *frame % 5 == 0)
+	{
+		if (touch_frame > 3)
+		{
+			NF_DeleteSprite(1, 0);
+			touch_frame = 0;
+		}
+		else
+		{
+			NF_SpriteFrame(1, 0, touch_frame++);
+		}
+	}
+}
+
+int main_loop()
 {
 	u8 board[BOARD_SIZE][BOARD_SIZE];
 	u32 score = 0;
 	move_dir_t player_move;
+	touchPosition touch;
+	u32 frame = 0;
 
-	consoleDemoInit();
-	consoleClear();
-	setBrightness(3, 0);
-
-	srand(time(NULL));
 	init_board(board);
-
 	while (1)
 	{
-		consoleClear();
+		scanKeys();
+		touchRead(&touch);
+
+		handle_touch_sprite(&frame, &touch);
+		/*consoleClear();
 		scanKeys();
 		long int key = keysDown();
 
@@ -232,8 +328,19 @@ int main(int argc, char **argv)
 			}
 		}
 		print_board(board);
+		printf("\nScore%8ld\n", score);*/
+		NF_SpriteOamSet(0);
 		swiWaitForVBlank();
+		oamUpdate(&oamMain);
+		NF_SpriteOamSet(1);
+		oamUpdate(&oamSub);
+		frame++;
+		frame %= 120;
 	}
+}
 
-	return 0;
+int main(int argc, char **argv)
+{
+	setup();
+	return main_loop();
 }
