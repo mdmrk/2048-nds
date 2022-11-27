@@ -43,7 +43,7 @@ enum SPRITE_IDS
 	SPRT_2048 = 11
 };
 
-void print_board(u8 board[BOARD_SIZE][BOARD_SIZE])
+void print_board(u16 board[BOARD_SIZE][BOARD_SIZE])
 {
 	for (u8 i = 0; i < BOARD_SIZE; i++)
 	{
@@ -55,7 +55,7 @@ void print_board(u8 board[BOARD_SIZE][BOARD_SIZE])
 	}
 }
 
-bool move(u8 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
+bool move(u16 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
 {
 	bool success = false;
 
@@ -166,7 +166,7 @@ bool move(u8 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
 	return success;
 }
 
-bool game_over(u8 board[BOARD_SIZE][BOARD_SIZE])
+bool game_over(u16 board[BOARD_SIZE][BOARD_SIZE])
 {
 	for (u8 i = 0; i < BOARD_SIZE; i++)
 	{
@@ -189,7 +189,7 @@ bool game_over(u8 board[BOARD_SIZE][BOARD_SIZE])
 	return true;
 }
 
-bool win(u8 board[BOARD_SIZE][BOARD_SIZE])
+bool win(u16 board[BOARD_SIZE][BOARD_SIZE])
 {
 	for (u8 i = 0; i < BOARD_SIZE; i++)
 	{
@@ -204,7 +204,7 @@ bool win(u8 board[BOARD_SIZE][BOARD_SIZE])
 	return false;
 }
 
-void place_rand(u8 board[BOARD_SIZE][BOARD_SIZE])
+void place_rand(u16 board[BOARD_SIZE][BOARD_SIZE])
 {
 	u8 empty_tiles[BOARD_SIZE * BOARD_SIZE][2], empty_tiles_count = 0;
 
@@ -225,11 +225,11 @@ void place_rand(u8 board[BOARD_SIZE][BOARD_SIZE])
 		return;
 
 	u8 tile_idx = rand() % empty_tiles_count;
-	u8 tile_num = ((rand() % 100) < 80) ? 2 : 4;
+	u16 tile_num = ((rand() % 100) < 80) ? 2 : 4;
 	board[empty_tiles[tile_idx][0]][empty_tiles[tile_idx][1]] = tile_num;
 }
 
-void init_board(u8 board[BOARD_SIZE][BOARD_SIZE])
+void init_board(u16 board[BOARD_SIZE][BOARD_SIZE])
 {
 	for (u8 i = 0; i < BOARD_SIZE; i++)
 	{
@@ -261,6 +261,9 @@ void setup()
 	NF_InitSpriteSys(1);
 	NF_InitTextSys(0);
 	NF_InitTextSys(1);
+
+	NF_LoadTextFont("fnt/font", "normal", 256, 256, 0);
+	NF_CreateTextLayer(0, 0, 0, "normal");
 
 	NF_LoadTiledBg("bg/bottom", "bottom", 256, 256);
 	NF_CreateTiledBg(1, 0, "bottom");
@@ -307,7 +310,7 @@ void handle_touch_sprite(u32 *frame, touchPosition *touch)
 	}
 }
 
-u8 get_sprite_id(u8 tile_num)
+u8 get_sprite_id(u16 tile_num)
 {
 	switch (tile_num)
 	{
@@ -349,7 +352,46 @@ u8 get_sprite_id(u8 tile_num)
 	}
 }
 
-void spawn_tile_sprites(u8 board[BOARD_SIZE][BOARD_SIZE], u8 tile_sprites[BOARD_SIZE * BOARD_SIZE], u8 tile_coords[BOARD_SIZE * BOARD_SIZE][2])
+void parse_numbers(char *arr, u8 arr_len)
+{
+	for (u8 i = 0; i < arr_len; i++)
+	{
+		switch (arr[i])
+		{
+		case '0':
+			arr[i] = 'P';
+			break;
+		case '1':
+			arr[i] = 'Q';
+			break;
+		case '2':
+			arr[i] = 'R';
+			break;
+		case '3':
+			arr[i] = 'S';
+			break;
+		case '4':
+			arr[i] = 'T';
+			break;
+		case '5':
+			arr[i] = 'U';
+			break;
+		case '6':
+			arr[i] = 'V';
+			break;
+		case '7':
+			arr[i] = 'W';
+			break;
+		case '8':
+			arr[i] = 'X';
+			break;
+		case '9':
+			arr[i] = 'Y';
+		}
+	}
+}
+
+void spawn_tile_sprites(u16 board[BOARD_SIZE][BOARD_SIZE], u8 tile_sprites[BOARD_SIZE * BOARD_SIZE], u8 tile_coords[BOARD_SIZE * BOARD_SIZE][2])
 {
 	for (u8 i = 0; i < BOARD_SIZE; i++)
 	{
@@ -366,7 +408,7 @@ void spawn_tile_sprites(u8 board[BOARD_SIZE][BOARD_SIZE], u8 tile_sprites[BOARD_
 	}
 }
 
-void clear_tile_sprites(u8 board[BOARD_SIZE][BOARD_SIZE], u8 tile_sprites[BOARD_SIZE * BOARD_SIZE])
+void clear_tile_sprites(u16 board[BOARD_SIZE][BOARD_SIZE], u8 tile_sprites[BOARD_SIZE * BOARD_SIZE])
 {
 	for (u8 i = 0; i < BOARD_SIZE * BOARD_SIZE; i++)
 	{
@@ -378,9 +420,18 @@ void clear_tile_sprites(u8 board[BOARD_SIZE][BOARD_SIZE], u8 tile_sprites[BOARD_
 	}
 }
 
+void print_score(u32 score)
+{
+	char str[32];
+
+	sprintf(str, "score\n%ld", score);
+	parse_numbers(str, 32);
+	NF_WriteText(0, 0, 1, 1, str);
+}
+
 int main_loop()
 {
-	u8 board[BOARD_SIZE][BOARD_SIZE];
+	u16 board[BOARD_SIZE][BOARD_SIZE];
 	u8 tile_coords[BOARD_SIZE * BOARD_SIZE][2];
 	u8 tile_sprites[BOARD_SIZE * BOARD_SIZE];
 	u32 score = 0, frame = 0;
@@ -425,11 +476,13 @@ int main_loop()
 			break;
 		default:
 		}
-		swiWaitForVBlank();
+		print_score(score);
+		NF_UpdateTextLayers();
 		NF_SpriteOamSet(0);
 		oamUpdate(&oamMain);
 		NF_SpriteOamSet(1);
 		oamUpdate(&oamSub);
+		swiWaitForVBlank();
 		if (frame++ == 60)
 		{
 			frame = 0;
