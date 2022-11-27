@@ -16,17 +16,32 @@
 		*score += board[a][b];      \
 		success = true;             \
 	}
+#define REGISTER_SPRITE(name, id, width, height)   \
+	{                                              \
+		NF_LoadSpriteGfx(name, id, width, height); \
+		NF_LoadSpritePal(name, id);                \
+		NF_VramSpriteGfx(1, id, id, false);        \
+		NF_VramSpritePal(1, id, id);               \
+	}
 #define tap() (keysDown() & KEY_TOUCH)
 #define release() (keysUp() & KEY_TOUCH)
 #define hold() (keysHeld() & KEY_TOUCH)
 
-typedef enum move_dir
+enum SPRITE_IDS
 {
-	UP,
-	DOWN,
-	LEFT,
-	RIGHT
-} move_dir_t;
+	SPRT_TOUCH = 0,
+	SPRT_2 = 1,
+	SPRT_4 = 2,
+	SPRT_8 = 3,
+	SPRT_16 = 4,
+	SPRT_32 = 5,
+	SPRT_64 = 6,
+	SPRT_128 = 7,
+	SPRT_256 = 8,
+	SPRT_512 = 9,
+	SPRT_1024 = 10,
+	SPRT_2048 = 11
+};
 
 void print_board(u8 board[BOARD_SIZE][BOARD_SIZE])
 {
@@ -40,13 +55,13 @@ void print_board(u8 board[BOARD_SIZE][BOARD_SIZE])
 	}
 }
 
-bool move(u8 board[BOARD_SIZE][BOARD_SIZE], move_dir_t *player_move, u32 *score)
+bool move(u8 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
 {
 	bool success = false;
 
-	switch (*player_move)
+	switch (player_move)
 	{
-	case UP:
+	case KEY_LEFT:
 		for (u8 j = 0; j < BOARD_SIZE; j++)
 		{
 			for (u8 i = 1; i < BOARD_SIZE; i++)
@@ -71,7 +86,7 @@ bool move(u8 board[BOARD_SIZE][BOARD_SIZE], move_dir_t *player_move, u32 *score)
 			}
 		}
 		break;
-	case DOWN:
+	case KEY_RIGHT:
 		for (u8 j = 0; j < BOARD_SIZE; j++)
 		{
 			for (int i = BOARD_SIZE - 2; i >= 0; i--)
@@ -96,7 +111,7 @@ bool move(u8 board[BOARD_SIZE][BOARD_SIZE], move_dir_t *player_move, u32 *score)
 			}
 		}
 		break;
-	case LEFT:
+	case KEY_UP:
 		for (u8 i = 0; i < BOARD_SIZE; i++)
 		{
 			for (u8 j = 1; j < BOARD_SIZE; j++)
@@ -121,7 +136,7 @@ bool move(u8 board[BOARD_SIZE][BOARD_SIZE], move_dir_t *player_move, u32 *score)
 			}
 		}
 		break;
-	case RIGHT:
+	case KEY_DOWN:
 		for (u8 i = 0; i < BOARD_SIZE; i++)
 		{
 			for (int j = BOARD_SIZE - 2; j >= 0; j--)
@@ -230,7 +245,6 @@ void init_board(u8 board[BOARD_SIZE][BOARD_SIZE])
 void setup()
 {
 	srand(time(NULL));
-	consoleDemoInit();
 	NF_SetRootFolder("NITROFS");
 
 	soundEnable();
@@ -251,10 +265,18 @@ void setup()
 	NF_LoadTiledBg("bg/bottom", "bottom", 256, 256);
 	NF_CreateTiledBg(1, 0, "bottom");
 
-	NF_LoadSpriteGfx("sprite/touch_icon", 0, 16, 16);
-	NF_LoadSpritePal("sprite/touch_icon", 0);
-	NF_VramSpriteGfx(1, 0, 0, false);
-	NF_VramSpritePal(1, 0, 0);
+	REGISTER_SPRITE("sprite/touch_icon", SPRT_TOUCH, 16, 16);
+	REGISTER_SPRITE("sprite/2", SPRT_2, 32, 32);
+	REGISTER_SPRITE("sprite/4", SPRT_4, 32, 32);
+	REGISTER_SPRITE("sprite/8", SPRT_8, 32, 32);
+	REGISTER_SPRITE("sprite/16", SPRT_16, 32, 32);
+	REGISTER_SPRITE("sprite/32", SPRT_32, 32, 32);
+	REGISTER_SPRITE("sprite/64", SPRT_64, 32, 32);
+	REGISTER_SPRITE("sprite/128", SPRT_128, 32, 32);
+	REGISTER_SPRITE("sprite/256", SPRT_256, 32, 32);
+	REGISTER_SPRITE("sprite/512", SPRT_512, 32, 32);
+	REGISTER_SPRITE("sprite/1024", SPRT_1024, 32, 32);
+	REGISTER_SPRITE("sprite/2048", SPRT_2048, 32, 32);
 }
 
 void handle_touch_sprite(u32 *frame, touchPosition *touch)
@@ -271,7 +293,7 @@ void handle_touch_sprite(u32 *frame, touchPosition *touch)
 		NF_CreateSprite(1, 0, 0, 0, touch->px - 8, touch->py - 8);
 		touch_frame++;
 	}
-	else if (touch_frame > 0 && *frame % 5 == 0)
+	else if (touch_frame > 0 && *frame % 4 == 0)
 	{
 		if (touch_frame > 3)
 		{
@@ -285,58 +307,135 @@ void handle_touch_sprite(u32 *frame, touchPosition *touch)
 	}
 }
 
+u8 get_sprite_id(u8 tile_num)
+{
+	switch (tile_num)
+	{
+	case 2:
+		return SPRT_2;
+		break;
+	case 4:
+		return SPRT_4;
+		break;
+	case 8:
+		return SPRT_8;
+		break;
+	case 16:
+		return SPRT_16;
+		break;
+	case 32:
+		return SPRT_32;
+		break;
+	case 64:
+		return SPRT_64;
+		break;
+	case 128:
+		return SPRT_128;
+		break;
+	case 256:
+		return SPRT_256;
+		break;
+	case 512:
+		return SPRT_512;
+		break;
+	case 1024:
+		return SPRT_1024;
+		break;
+	case 2048:
+		return SPRT_2048;
+		break;
+	default:
+		return SPRT_2048;
+	}
+}
+
+void spawn_tile_sprites(u8 board[BOARD_SIZE][BOARD_SIZE], u8 tile_sprites[BOARD_SIZE * BOARD_SIZE], u8 tile_coords[BOARD_SIZE * BOARD_SIZE][2])
+{
+	for (u8 i = 0; i < BOARD_SIZE; i++)
+	{
+		for (u8 j = 0; j < BOARD_SIZE; j++)
+		{
+			if (board[i][j] != 0)
+			{
+				u8 sprite_id = get_sprite_id(board[i][j]);
+
+				NF_CreateSprite(1, 10 + i * BOARD_SIZE + j, sprite_id, sprite_id, tile_coords[i * BOARD_SIZE + j][0], tile_coords[i * BOARD_SIZE + j][1]);
+				tile_sprites[i * BOARD_SIZE + j] = 1;
+			}
+		}
+	}
+}
+
+void clear_tile_sprites(u8 board[BOARD_SIZE][BOARD_SIZE], u8 tile_sprites[BOARD_SIZE * BOARD_SIZE])
+{
+	for (u8 i = 0; i < BOARD_SIZE * BOARD_SIZE; i++)
+	{
+		if (tile_sprites[i] != 0)
+		{
+			NF_DeleteSprite(1, 10 + i);
+			tile_sprites[i] = 0;
+		}
+	}
+}
+
 int main_loop()
 {
 	u8 board[BOARD_SIZE][BOARD_SIZE];
-	u32 score = 0;
-	move_dir_t player_move;
+	u8 tile_coords[BOARD_SIZE * BOARD_SIZE][2];
+	u8 tile_sprites[BOARD_SIZE * BOARD_SIZE];
+	u32 score = 0, frame = 0;
 	touchPosition touch;
-	u32 frame = 0;
 
 	init_board(board);
+
+	for (u8 i = 36 + 15.5, m = 0; m < BOARD_SIZE; i += 31, m++)
+	{
+		for (u8 j = 28 + 15.5, n = 0; n < BOARD_SIZE; j += 31, n++)
+		{
+			tile_coords[m * BOARD_SIZE + n][0] = i - 15.5;
+			tile_coords[m * BOARD_SIZE + n][1] = j - 15.5;
+		}
+	}
+
+	for (u8 i = 0; i < BOARD_SIZE * BOARD_SIZE; i++)
+	{
+		tile_sprites[i] = 0;
+	}
+
+	spawn_tile_sprites(board, tile_sprites, tile_coords);
 	while (1)
 	{
 		scanKeys();
 		touchRead(&touch);
-
 		handle_touch_sprite(&frame, &touch);
-		/*consoleClear();
-		scanKeys();
-		long int key = keysDown();
 
-		if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN)
+		long int key = keysDown();
+		switch (key)
 		{
-			switch (key)
-			{
-			case KEY_UP:
-				player_move = UP;
-				break;
-			case KEY_DOWN:
-				player_move = DOWN;
-				break;
-			case KEY_LEFT:
-				player_move = LEFT;
-				break;
-			case KEY_RIGHT:
-				player_move = RIGHT;
-				break;
-			default:
-			}
-			if (move(board, &player_move, &score))
+		case KEY_UP:
+		case KEY_DOWN:
+		case KEY_LEFT:
+		case KEY_RIGHT:
+			clear_tile_sprites(board, tile_sprites);
+			if (move(board, key, &score))
 			{
 				place_rand(board);
 			}
+			spawn_tile_sprites(board, tile_sprites, tile_coords);
+			break;
+		default:
 		}
-		print_board(board);
-		printf("\nScore%8ld\n", score);*/
-		NF_SpriteOamSet(0);
 		swiWaitForVBlank();
+		NF_SpriteOamSet(0);
 		oamUpdate(&oamMain);
 		NF_SpriteOamSet(1);
 		oamUpdate(&oamSub);
-		frame++;
-		frame %= 120;
+		if (frame++ == 60)
+		{
+			frame = 0;
+		}
 	}
+	return 1;
 }
 
 int main(int argc, char **argv)

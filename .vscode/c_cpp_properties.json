@@ -5,7 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/nflib/include/*",
                 "/opt/devkitpro/libnds/include/*",
-                "/opt/devkitpro/libnds/include/nds/arm9/*"
+                "/opt/devkitpro/libnds/include/nds/arm9/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",
