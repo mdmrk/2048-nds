@@ -1,20 +1,38 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
 #include <nds.h>
 #include <nf_lib.h>
 
 #define BOARD_SIZE 4
-#define uint8_t u8
-#define uint16_t u16
-#define uint32_t u32
-#define MOVE_TWO_TILES(a, b, c, d)  \
+#define u8 uint8_t
+#define u16 uint16_t
+#define u32 uint32_t
+#define MOVE_TILES(i, j, k, m)      \
 	{                               \
-		board[a][b] += board[c][d]; \
-		board[c][d] = 0;            \
-		*score += board[a][b];      \
+		board[i][j] += board[k][m]; \
+		board[k][m] = 0;            \
 		success = true;             \
+	}
+
+#define CHECK_TILE_MOVE(i, j, k, m)     \
+	{                                   \
+		if (board[i][j] == board[k][m]) \
+		{                               \
+			MOVE_TILES(i, j, k, m);     \
+			*score += board[i][j];      \
+			break;                      \
+		}                               \
+		else if (board[i][j] == 0)      \
+		{                               \
+			MOVE_TILES(i, j, k, m);     \
+		}                               \
+		else                            \
+		{                               \
+			break;                      \
+		}                               \
 	}
 #define REGISTER_SPRITE(name, id, width, height)   \
 	{                                              \
@@ -23,9 +41,10 @@
 		NF_VramSpriteGfx(1, id, id, false);        \
 		NF_VramSpritePal(1, id, id);               \
 	}
-#define tap() (keysDown() & KEY_TOUCH)
-#define release() (keysUp() & KEY_TOUCH)
-#define hold() (keysHeld() & KEY_TOUCH)
+
+#define TAP() (keysDown() & KEY_TOUCH)
+#define RELEASE() (keysUp() & KEY_TOUCH)
+#define HOLD() (keysHeld() & KEY_TOUCH)
 
 enum SPRITE_IDS
 {
@@ -61,7 +80,7 @@ bool move(u16 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
 
 	switch (player_move)
 	{
-	case KEY_LEFT:
+	case KEY_UP:
 		for (u8 j = 0; j < BOARD_SIZE; j++)
 		{
 			for (u8 i = 1; i < BOARD_SIZE; i++)
@@ -70,23 +89,13 @@ bool move(u16 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
 				{
 					for (u8 k = i; k > 0; k--)
 					{
-						if (board[k - 1][j] == board[k][j])
-						{
-							MOVE_TWO_TILES(k - 1, j, k, j);
-							break;
-						}
-						else if (board[k - 1][j] == 0)
-						{
-							MOVE_TWO_TILES(k - 1, j, k, j);
-						}
-						else
-							break;
+						CHECK_TILE_MOVE(k - 1, j, k, j);
 					}
 				}
 			}
 		}
 		break;
-	case KEY_RIGHT:
+	case KEY_DOWN:
 		for (u8 j = 0; j < BOARD_SIZE; j++)
 		{
 			for (int i = BOARD_SIZE - 2; i >= 0; i--)
@@ -95,23 +104,13 @@ bool move(u16 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
 				{
 					for (u8 k = i; k < BOARD_SIZE - 1; k++)
 					{
-						if (board[k + 1][j] == board[k][j])
-						{
-							MOVE_TWO_TILES(k + 1, j, k, j);
-							break;
-						}
-						else if (board[k + 1][j] == 0)
-						{
-							MOVE_TWO_TILES(k + 1, j, k, j);
-						}
-						else
-							break;
+						CHECK_TILE_MOVE(k + 1, j, k, j);
 					}
 				}
 			}
 		}
 		break;
-	case KEY_UP:
+	case KEY_LEFT:
 		for (u8 i = 0; i < BOARD_SIZE; i++)
 		{
 			for (u8 j = 1; j < BOARD_SIZE; j++)
@@ -120,43 +119,22 @@ bool move(u16 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
 				{
 					for (u8 k = j; k > 0; k--)
 					{
-						if (board[i][k - 1] == board[i][k])
-						{
-							MOVE_TWO_TILES(i, k - 1, i, k);
-							break;
-						}
-						else if (board[i][k - 1] == 0)
-						{
-							MOVE_TWO_TILES(i, k - 1, i, k);
-						}
-						else
-							break;
+						CHECK_TILE_MOVE(i, k - 1, i, k);
 					}
 				}
 			}
 		}
 		break;
-	case KEY_DOWN:
+	case KEY_RIGHT:
 		for (u8 i = 0; i < BOARD_SIZE; i++)
 		{
 			for (int j = BOARD_SIZE - 2; j >= 0; j--)
 			{
 				if (board[i][j] != 0)
 				{
-					printf("%d\n", board[i][j]);
 					for (u8 k = j; k < BOARD_SIZE - 1; k++)
 					{
-						if (board[i][k + 1] == board[i][k])
-						{
-							MOVE_TWO_TILES(i, k + 1, i, k);
-							break;
-						}
-						else if (board[i][k + 1] == 0)
-						{
-							MOVE_TWO_TILES(i, k + 1, i, k);
-						}
-						else
-							break;
+						CHECK_TILE_MOVE(i, k + 1, i, k);
 					}
 				}
 			}
@@ -208,6 +186,7 @@ void place_rand(u16 board[BOARD_SIZE][BOARD_SIZE])
 {
 	u8 empty_tiles[BOARD_SIZE * BOARD_SIZE][2], empty_tiles_count = 0;
 
+	srand(time(NULL));
 	for (u8 i = 0; i < BOARD_SIZE; i++)
 	{
 		for (u8 j = 0; j < BOARD_SIZE; j++)
@@ -244,7 +223,6 @@ void init_board(u16 board[BOARD_SIZE][BOARD_SIZE])
 
 void setup()
 {
-	srand(time(NULL));
 	NF_SetRootFolder("NITROFS");
 
 	soundEnable();
@@ -286,7 +264,7 @@ void handle_touch_sprite(u32 *frame, touchPosition *touch)
 {
 	static u8 touch_frame = 0;
 
-	if (tap())
+	if (TAP())
 	{
 		if (touch_frame > 0)
 		{
@@ -424,7 +402,7 @@ void print_score(u32 score)
 {
 	char str[32];
 
-	sprintf(str, "score\n%ld", score);
+	sprintf(str, "score %ld", score);
 	parse_numbers(str, 32);
 	NF_WriteText(0, 0, 1, 1, str);
 }
