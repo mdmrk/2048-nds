@@ -276,6 +276,7 @@ void handle_touch_sprite(u32 *frame, touchPosition *touch)
 		if (touch_frame > 0)
 		{
 			NF_DeleteSprite(1, 0);
+			soundKill(0);
 			touch_frame = 0;
 		}
 		NF_CreateSprite(1, 0, 0, 0, touch->px - 8, touch->py - 8);
