@@ -34,6 +34,7 @@
 			break;                      \
 		}                               \
 	}
+
 #define REGISTER_SPRITE(name, id, width, height)   \
 	{                                              \
 		NF_LoadSpriteGfx(name, id, width, height); \
@@ -48,7 +49,7 @@
 
 enum SPRITE_IDS
 {
-	SPRT_TOUCH = 0,
+	SPRT_TAP = 0,
 	SPRT_2 = 1,
 	SPRT_4 = 2,
 	SPRT_8 = 3,
@@ -80,7 +81,7 @@ bool move(u16 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
 
 	switch (player_move)
 	{
-	case KEY_UP:
+	case KEY_LEFT:
 		for (u8 j = 0; j < BOARD_SIZE; j++)
 		{
 			for (u8 i = 1; i < BOARD_SIZE; i++)
@@ -95,7 +96,7 @@ bool move(u16 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
 			}
 		}
 		break;
-	case KEY_DOWN:
+	case KEY_RIGHT:
 		for (u8 j = 0; j < BOARD_SIZE; j++)
 		{
 			for (int i = BOARD_SIZE - 2; i >= 0; i--)
@@ -110,7 +111,7 @@ bool move(u16 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
 			}
 		}
 		break;
-	case KEY_LEFT:
+	case KEY_UP:
 		for (u8 i = 0; i < BOARD_SIZE; i++)
 		{
 			for (u8 j = 1; j < BOARD_SIZE; j++)
@@ -125,7 +126,7 @@ bool move(u16 board[BOARD_SIZE][BOARD_SIZE], long int player_move, u32 *score)
 			}
 		}
 		break;
-	case KEY_RIGHT:
+	case KEY_DOWN:
 		for (u8 i = 0; i < BOARD_SIZE; i++)
 		{
 			for (int j = BOARD_SIZE - 2; j >= 0; j--)
@@ -240,13 +241,19 @@ void setup()
 	NF_InitTextSys(0);
 	NF_InitTextSys(1);
 
+	NF_LoadRawSound("sounds/tap", 0, 22050, 0);
+
 	NF_LoadTextFont("fnt/font", "normal", 256, 256, 0);
 	NF_CreateTextLayer(0, 0, 0, "normal");
+	NF_DefineTextColor(0, 0, 0, 255, 183, 3);
+	NF_SetTextColor(0, 0, 0);
 
+	NF_LoadTiledBg("bg/top", "top", 256, 256);
+	NF_CreateTiledBg(0, 1, "top");
 	NF_LoadTiledBg("bg/bottom", "bottom", 256, 256);
 	NF_CreateTiledBg(1, 0, "bottom");
 
-	REGISTER_SPRITE("sprite/touch_icon", SPRT_TOUCH, 16, 16);
+	REGISTER_SPRITE("sprite/tap", SPRT_TAP, 16, 16);
 	REGISTER_SPRITE("sprite/2", SPRT_2, 32, 32);
 	REGISTER_SPRITE("sprite/4", SPRT_4, 32, 32);
 	REGISTER_SPRITE("sprite/8", SPRT_8, 32, 32);
@@ -272,6 +279,7 @@ void handle_touch_sprite(u32 *frame, touchPosition *touch)
 			touch_frame = 0;
 		}
 		NF_CreateSprite(1, 0, 0, 0, touch->px - 8, touch->py - 8);
+		NF_PlayRawSound(0, 127, 64, false, 0);
 		touch_frame++;
 	}
 	else if (touch_frame > 0 && *frame % 4 == 0)
@@ -279,6 +287,7 @@ void handle_touch_sprite(u32 *frame, touchPosition *touch)
 		if (touch_frame > 3)
 		{
 			NF_DeleteSprite(1, 0);
+			soundKill(0);
 			touch_frame = 0;
 		}
 		else
@@ -330,6 +339,7 @@ u8 get_sprite_id(u16 tile_num)
 	}
 }
 
+// Deal with incorrect read from file :(
 void parse_numbers(char *arr, u8 arr_len)
 {
 	for (u8 i = 0; i < arr_len; i++)
@@ -404,7 +414,7 @@ void print_score(u32 score)
 
 	sprintf(str, "score %ld", score);
 	parse_numbers(str, 32);
-	NF_WriteText(0, 0, 1, 1, str);
+	NF_WriteText(0, 0, 1, 22, str);
 }
 
 int main_loop()
