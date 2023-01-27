@@ -15,8 +15,7 @@
 Install [devkitPro](https://devkitpro.org/wiki/devkitPro_pacman). Installation might be different depending on the platform. On Linux and using [pacman](https://wiki.archlinux.org/title/pacman) as the package manager we'll type
 
 ```
-sudo pacman -Syu
-sudo pacman -S libnds ndstool libfilesystem libfat-nds
+sudo pacman -Syu nds-dev
 ```
 
 Then simply run
