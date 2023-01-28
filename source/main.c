@@ -187,7 +187,6 @@ void place_rand(u16 board[BOARD_SIZE][BOARD_SIZE])
 {
 	u8 empty_tiles[BOARD_SIZE * BOARD_SIZE][2], empty_tiles_count = 0;
 
-	srand(time(NULL));
 	for (u8 i = 0; i < BOARD_SIZE; i++)
 	{
 		for (u8 j = 0; j < BOARD_SIZE; j++)
@@ -224,6 +223,7 @@ void init_board(u16 board[BOARD_SIZE][BOARD_SIZE])
 
 void setup()
 {
+	srand(time(NULL));
 	NF_SetRootFolder("NITROFS");
 
 	soundEnable();
@@ -236,16 +236,15 @@ void setup()
 	NF_InitSpriteBuffers();
 	NF_InitTiledBgSys(0);
 	NF_InitTiledBgSys(1);
-	NF_InitSpriteSys(0);
 	NF_InitSpriteSys(1);
 	NF_InitTextSys(0);
-	NF_InitTextSys(1);
 
 	NF_LoadRawSound("sounds/tap", 0, 22050, 0);
 
 	NF_LoadTextFont("fnt/font", "normal", 256, 256, 0);
 	NF_CreateTextLayer(0, 0, 0, "normal");
 	NF_DefineTextColor(0, 0, 0, 255, 183, 3);
+	NF_DefineTextColor(0, 0, 1, 255, 0, 0);
 	NF_SetTextColor(0, 0, 0);
 
 	NF_LoadTiledBg("bg/top", "top", 256, 256);
@@ -267,7 +266,7 @@ void setup()
 	REGISTER_SPRITE("sprite/2048", SPRT_2048, 32, 32);
 }
 
-void handle_touch_sprite(u32 *frame, touchPosition *touch)
+void handle_touch_sprite(u32 frame, touchPosition *touch)
 {
 	static u8 touch_frame = 0;
 
@@ -283,7 +282,7 @@ void handle_touch_sprite(u32 *frame, touchPosition *touch)
 		NF_PlayRawSound(0, 127, 64, false, 0);
 		touch_frame++;
 	}
-	else if (touch_frame > 0 && *frame % 4 == 0)
+	else if (touch_frame > 0 && frame % 4 == 0)
 	{
 		if (touch_frame > 3)
 		{
@@ -295,6 +294,35 @@ void handle_touch_sprite(u32 *frame, touchPosition *touch)
 		{
 			NF_SpriteFrame(1, 0, touch_frame++);
 		}
+	}
+}
+
+void handle_restart_game(bool *end)
+{
+	long int key = keysHeld();
+	static u8 restart_frame = 0;
+	static const u8 restart_threshold = 120;
+
+	if (key == KEY_START)
+	{
+		if (restart_frame++ == restart_threshold)
+		{
+			*end = true;
+		}
+	}
+	else
+	{
+		restart_frame = 0;
+	}
+}
+
+void handle_game_over(u16 board[BOARD_SIZE][BOARD_SIZE], bool *end)
+{
+	if (game_over(board))
+	{
+		NF_SetTextColor(0, 0, 1);
+		NF_WriteText(0, 0, 12, 22, "game over");
+		NF_SetTextColor(0, 0, 0);
 	}
 }
 
@@ -424,10 +452,10 @@ int main_loop()
 	u8 tile_coords[BOARD_SIZE * BOARD_SIZE][2];
 	u8 tile_sprites[BOARD_SIZE * BOARD_SIZE];
 	u32 score = 0, frame = 0;
+	bool end = false;
 	touchPosition touch;
 
 	init_board(board);
-
 	for (u8 i = 36 + 15.5, m = 0; m < BOARD_SIZE; i += 31, m++)
 	{
 		for (u8 j = 28 + 15.5, n = 0; n < BOARD_SIZE; j += 31, n++)
@@ -443,11 +471,11 @@ int main_loop()
 	}
 
 	spawn_tile_sprites(board, tile_sprites, tile_coords);
-	while (1)
+	while (!end)
 	{
 		scanKeys();
 		touchRead(&touch);
-		handle_touch_sprite(&frame, &touch);
+		handle_touch_sprite(frame, &touch);
 
 		long int key = keysDown();
 		switch (key)
@@ -465,6 +493,9 @@ int main_loop()
 			break;
 		default:
 		}
+		handle_restart_game(&end);
+		handle_game_over(board, &end);
+
 		print_score(score);
 		NF_UpdateTextLayers();
 		NF_SpriteOamSet(0);
@@ -477,11 +508,15 @@ int main_loop()
 			frame = 0;
 		}
 	}
+	clear_tile_sprites(board, tile_sprites);
 	return 1;
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 	setup();
-	return main_loop();
+	while (1)
+	{
+		main_loop();
+	}
 }
